@@ -41,9 +41,11 @@ jobs:
 
       - name: Build Docker Image
         run: |
-          docker build -t ghcr.io/${{ github.repository_owner }}/demo-microservice:latest .
+          docker build \
+            -t ghcr.io/${{ github.repository_owner }}/demo-microservice:${{ github.run_number }} \
+            -t ghcr.io/${{ github.repository_owner }}/demo-microservice:latest .
 
       - name: Push Docker Image
         run: |
+          docker push ghcr.io/${{ github.repository_owner }}/demo-microservice:${{ github.run_number }}
           docker push ghcr.io/${{ github.repository_owner }}/demo-microservice:latest
-
