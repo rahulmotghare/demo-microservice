@@ -1,4 +1,4 @@
-name: CI Pipeline
+name: Build, Publish & Update GitOps
 
 permissions:
   contents: read
@@ -9,16 +9,25 @@ on:
     branches:
       - main
 
-jobs:
-  build:
+concurrency:
+  group: demo-microservice
+  cancel-in-progress: true
 
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/demo-microservice
+  IMAGE_TAG: ${{ github.run_number }}
+
+jobs:
+  build-and-publish:
     runs-on: ubuntu-latest
 
     steps:
 
+      # Checkout source code
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      # Install Java
       - name: Set up Java 21
         uses: actions/setup-java@v4
         with:
@@ -26,50 +35,69 @@ jobs:
           java-version: 21
           cache: maven
 
+      # Make Maven Wrapper executable
       - name: Make Maven Wrapper Executable
         run: chmod +x mvnw
 
+      # Build Spring Boot application
       - name: Build Spring Boot Application
         run: ./mvnw clean package
 
-      - name: Login to GitHub Container Registry
+      # Login to GitHub Container Registry
+      - name: Login to GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Build Docker image
       - name: Build Docker Image
         run: |
           docker build \
-            -t ghcr.io/${{ github.repository_owner }}/demo-microservice:${{ github.run_number }} \
-            -t ghcr.io/${{ github.repository_owner }}/demo-microservice:latest .
+            -t $IMAGE_NAME:$IMAGE_TAG \
+            -t $IMAGE_NAME:latest .
 
+      - name: Scan Docker Image with Trivy
+        uses: aquasecurity/trivy-action@0.30.0
+        with:
+          image-ref: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+          format: table
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
+
+      # Push Docker image
       - name: Push Docker Image
         run: |
-          docker push ghcr.io/${{ github.repository_owner }}/demo-microservice:${{ github.run_number }}
-          docker push ghcr.io/${{ github.repository_owner }}/demo-microservice:latest
-      
+          docker push $IMAGE_NAME:$IMAGE_TAG
+          docker push $IMAGE_NAME:latest
+
+      # Configure Git identity
       - name: Configure Git
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-      
-      - name: Clone GitOps Repository
-        run: |
-          git clone https://x-access-token:${{ secrets.GITOPS_PAT }}@github.com/rahulmotghare/platform-gitops.git
-          cd platform-gitops
-          git remote -v
 
-      - name: Update Helm Values
+      # Checkout GitOps repository
+      - name: Checkout GitOps Repository
+        uses: actions/checkout@v4
+        with:
+          repository: rahulmotghare/platform-gitops
+          token: ${{ secrets.GITOPS_PAT }}
+          path: platform-gitops
+
+      # Update Helm values
+      - name: Update Image Tag
         run: |
           cd platform-gitops/charts/demo-microservice
 
-          sed -i.bak 's/tag:.*/tag: "${{ github.run_number }}"/' values.yaml
+          sed -i.bak "s/tag: \".*\"/tag: \"$IMAGE_TAG\"/" values.yaml
 
           rm values.yaml.bak
 
-      - name: Commit and Push GitOps Changes
+      # Commit changes only if necessary
+      - name: Commit GitOps Changes
         run: |
           cd platform-gitops
 
@@ -80,6 +108,10 @@ jobs:
             exit 0
           fi
 
-          git commit -m "Update image tag to ${{ github.run_number }}"
+          git commit -m "ci: update demo-microservice image to $IMAGE_TAG"
 
-          git push
+      # Push GitOps changes
+      - name: Push GitOps Changes
+        run: |
+          cd platform-gitops
+          git push origin HEAD:main
