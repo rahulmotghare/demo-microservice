@@ -49,3 +49,37 @@ jobs:
         run: |
           docker push ghcr.io/${{ github.repository_owner }}/demo-microservice:${{ github.run_number }}
           docker push ghcr.io/${{ github.repository_owner }}/demo-microservice:latest
+      
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      
+      - name: Clone GitOps Repository
+        run: |
+          git clone https://x-access-token:${{ secrets.GITOPS_PAT }}@github.com/rahulmotghare/platform-gitops.git
+          cd platform-gitops
+          git remote -v
+
+      - name: Update Helm Values
+        run: |
+          cd platform-gitops/charts/demo-microservice
+
+          sed -i.bak 's/tag:.*/tag: "${{ github.run_number }}"/' values.yaml
+
+          rm values.yaml.bak
+
+      - name: Commit and Push GitOps Changes
+        run: |
+          cd platform-gitops
+
+          git add .
+
+          if git diff --cached --quiet; then
+            echo "No changes detected."
+            exit 0
+          fi
+
+          git commit -m "Update image tag to ${{ github.run_number }}"
+
+          git push
