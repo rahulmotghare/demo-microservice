@@ -67,6 +67,19 @@ jobs:
           ignore-unfixed: true
           severity: CRITICAL,HIGH
 
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+          format: spdx-json
+          output-file: sbom.spdx.json
+
+      - name: Upload SBOM Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.spdx.json
+
       # Push Docker image
       - name: Push Docker Image
         run: |
