@@ -59,7 +59,7 @@ jobs:
             -t $IMAGE_NAME:latest .
 
       - name: Scan Docker Image with Trivy
-        uses: aquasecurity/trivy-action@0.30.0
+        uses: aquasecurity/trivy-action@v0.35.0
         with:
           image-ref: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
           format: table
