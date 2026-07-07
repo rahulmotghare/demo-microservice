@@ -83,7 +83,13 @@ jobs:
           name: sbom
           path: sbom.spdx.json
 
-      - name: Sign Docker Image
+      # Push Docker image
+      - name: Push Docker Image
+        run: |
+          docker push $IMAGE_NAME:$IMAGE_TAG
+          docker push $IMAGE_NAME:latest
+
+      - name: Sign Container Image
         env:
           COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
@@ -92,16 +98,10 @@ jobs:
 
           cosign sign \
             --key cosign.key \
-            $IMAGE_NAME:$IMAGE_TAG \
-            --yes
+            --yes \
+            $IMAGE_NAME:$IMAGE_TAG
 
-          rm cosign.key
-
-      # Push Docker image
-      - name: Push Docker Image
-        run: |
-          docker push $IMAGE_NAME:$IMAGE_TAG
-          docker push $IMAGE_NAME:latest
+          rm -f cosign.key
 
       # Configure Git identity
       - name: Configure Git
