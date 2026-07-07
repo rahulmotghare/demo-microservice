@@ -35,6 +35,9 @@ jobs:
           java-version: 21
           cache: maven
 
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3
+
       # Make Maven Wrapper executable
       - name: Make Maven Wrapper Executable
         run: chmod +x mvnw
@@ -79,6 +82,20 @@ jobs:
         with:
           name: sbom
           path: sbom.spdx.json
+
+      - name: Sign Docker Image
+        env:
+          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+        run: |
+          echo "$COSIGN_PRIVATE_KEY" > cosign.key
+
+          cosign sign \
+            --key cosign.key \
+            $IMAGE_NAME:$IMAGE_TAG \
+            --yes
+
+          rm cosign.key
 
       # Push Docker image
       - name: Push Docker Image
