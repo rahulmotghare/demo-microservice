@@ -21,3 +21,7 @@ This project provisions infrastructure using **Terraform**, deploys a **Spring B
 | Container Registry | GitHub Container Registry (GHCR) |
 | Security | Trivy, SBOM, Cosign |
 | Application | Spring Boot (Java 21) |
+
+## 🏗️ System Architecture
+
+> **Architecture diagram coming soon.** This section will include the complete platform architecture showing Infrastructure, CI/CD, GitOps, DevSecOps, and deployment flow.

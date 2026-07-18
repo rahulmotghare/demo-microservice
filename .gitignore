@@ -29,9 +29,18 @@ build/
 !**/src/main/**/build/
 !**/src/test/**/build/
 
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# Logs
+*.log
+
 ### VS Code ###
 .vscode/
 
 # Cosign
 cosign.key
-cosign.pub
+
